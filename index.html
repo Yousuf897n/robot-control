@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shark Control Dashboard - MY</title>
+    <style>
+        :root { --neon-cyan: #00e5ff; --neon-orange: #ff9f43; --dark-bg: #05060b; }
+        body { background: var(--dark-bg); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 10px; display: flex; justify-content: center; overflow-x: hidden; }
+        
+        .main-frame {
+            width: 100%; max-width: 420px; border: 2px solid var(--neon-cyan); border-radius: 20px;
+            padding: 20px; background: rgba(0, 0, 0, 0.95); box-shadow: 0 0 25px rgba(0, 229, 255, 0.2);
+            position: relative;
+        }
+
+        /* لائیو فیڈ ونڈو */
+        .camera-window {
+            width: 100%; height: 260px; background: #000; border: 1px solid var(--neon-cyan);
+            margin-bottom: 20px; position: relative; border-radius: 12px; overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.3);
+        }
+
+        #videoFeed { width: 100%; height: 100%; object-fit: cover; }
+
+        .live-indicator {
+            position: absolute; top: 12px; left: 12px; color: #ff4444; font-size: 11px;
+            font-weight: bold; animation: blink 1.5s infinite; z-index: 10; letter-spacing: 1px;
+        }
+        @keyframes blink { 50% { opacity: 0.3; } }
+
+        /* ڈیپتھ میٹر */
+        .monitor-label { font-size: 11px; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 1px; }
+        
+        .depth-container {
+            height: 70px; border: 1px solid rgba(0, 229, 255, 0.2); margin-bottom: 20px;
+            position: relative; background: rgba(255, 255, 255, 0.02); border-radius: 8px;
+        }
+        .depth-line {
+            position: absolute; width: 100%; height: 2px; background: var(--neon-orange);
+            top: 30%; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 12px var(--neon-orange);
+        }
+        .depth-value {
+            position: absolute; right: 15px; top: 10px; color: var(--neon-orange);
+            font-size: 22px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 159, 67, 0.5);
+        }
+
+        /* کنٹرول بٹنز */
+        .control-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .btn {
+            background: rgba(0, 229, 255, 0.05); border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan); padding: 15px 5px; cursor: pointer; border-radius: 8px;
+            font-weight: bold; font-size: 11px; transition: 0.3s;
+        }
+        .btn:active { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
+        
+        .status-bar { font-size: 10px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="main-frame">
+    <span class="monitor-label">● Live System Feed [Encrypted]</span>
+    <div class="camera-window">
+        <div class="live-indicator">● LIVE [ROBOT_EYE_01]</div>
+        <video id="videoFeed" autoplay playsinline></video>
+    </div>
+
+    <span class="monitor-label">● Depth Monitor (Meters)</span>
+    <div class="depth-container">
+        <div id="dLine" class="depth-line"></div>
+        <div id="dVal" class="depth-value">30m</div>
+    </div>
+
+    <div class="control-grid">
+        <button class="btn" onclick="act('RISE')">RISE ▲</button>
+        <button class="btn" onclick="act('FWD')">FWD ↑</button>
+        <button class="btn" onclick="act('STOP')">STOP ■</button>
+        <button class="btn" onclick="act('LEFT')">LEFT ◀</button>
+        <button class="btn" onclick="act('DIVE')">DIVE ▼</button>
+        <button class="btn" onclick="act('RIGHT')">RIGHT ▶</button>
+    </div>
+
+    <div class="status-bar">SYSTEM_READY | SIGNAL: STABLE | BY: MY</div>
+</div>
+
+<script>
+    // کیمرہ ایکٹیویٹ کرنے کا فنکشن
+    async function startSystem() {
+        const video = document.getElementById('videoFeed');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" }, // موبائل کا پچھلا کیمرہ
+                audio: false 
+            });
+            video.srcObject = stream;
+        } catch (err) {
+            console.error("Camera Error:", err);
+            // اگر لوکل فائل ہے تو الرٹ دکھائے گا
+            if(location.protocol !== 'https:') {
+                alert("کیمرہ صرف HTTPS پر کام کرے گا۔ براہ کرم GitHub پر اپ لوڈ کریں!");
+            }
+        }
+    }
+
+    // پیج لوڈ ہوتے ہی سسٹم شروع کریں
+    window.onload = startSystem;
+
+    let depth = 30;
+    function act(type) {
+        if(type === 'DIVE' && depth < 100) depth += 10;
+        if(type === 'RISE' && depth > 0) depth -= 10;
+        
+        // گرافکس اپڈیٹ
+        document.getElementById('dLine').style.top = depth + "%";
+        document.getElementById('dVal').innerText = depth + "m";
+        
+        // ہیپٹک فیڈ بیک (اگر موبائل سپورٹ کرے)
+        if (navigator.vibrate) navigator.vibrate(50);
+    }
+</script>
+
+</body>
+</html>
