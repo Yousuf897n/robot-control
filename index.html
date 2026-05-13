@@ -3,121 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shark Control Dashboard - MY</title>
+    <title>Shark Dashboard - Pro Edition</title>
     <style>
-        :root { --neon-cyan: #00e5ff; --neon-orange: #ff9f43; --dark-bg: #05060b; }
-        body { background: var(--dark-bg); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 10px; display: flex; justify-content: center; overflow-x: hidden; }
-        
-        .main-frame {
-            width: 100%; max-width: 420px; border: 2px solid var(--neon-cyan); border-radius: 20px;
-            padding: 20px; background: rgba(0, 0, 0, 0.95); box-shadow: 0 0 25px rgba(0, 229, 255, 0.2);
+        body {
+            background-color: #000;
+            color: #00f2ff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .dashboard {
+            width: 350px;
+            padding: 20px;
+            border: 3px solid #00f2ff;
+            border-radius: 20px;
+            box-shadow: 0 0 20px #00f2ff;
+            text-align: center;
+            background: rgba(0, 5, 10, 0.9);
+        }
+
+        h3 { font-size: 14px; margin-bottom: 10px; text-shadow: 0 0 5px #00f2ff; }
+
+        /* Camera Feed */
+        #video-container {
+            width: 100%;
+            height: 200px;
+            background: #111;
+            border-radius: 10px;
+            border: 1px solid #00f2ff;
+            overflow: hidden;
             position: relative;
+            margin-bottom: 15px;
         }
 
-        /* لائیو فیڈ ونڈو */
-        .camera-window {
-            width: 100%; height: 260px; background: #000; border: 1px solid var(--neon-cyan);
-            margin-bottom: 20px; position: relative; border-radius: 12px; overflow: hidden;
-            box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.3);
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        .live-tag {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 10px;
+            animation: blink 1s infinite;
         }
 
-        #videoFeed { width: 100%; height: 100%; object-fit: cover; }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        .live-indicator {
-            position: absolute; top: 12px; left: 12px; color: #ff4444; font-size: 11px;
-            font-weight: bold; animation: blink 1.5s infinite; z-index: 10; letter-spacing: 1px;
-        }
-        @keyframes blink { 50% { opacity: 0.3; } }
-
-        /* ڈیپتھ میٹر */
-        .monitor-label { font-size: 11px; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: 1px; }
-        
-        .depth-container {
-            height: 70px; border: 1px solid rgba(0, 229, 255, 0.2); margin-bottom: 20px;
-            position: relative; background: rgba(255, 255, 255, 0.02); border-radius: 8px;
-        }
-        .depth-line {
-            position: absolute; width: 100%; height: 2px; background: var(--neon-orange);
-            top: 30%; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 0 12px var(--neon-orange);
-        }
-        .depth-value {
-            position: absolute; right: 15px; top: 10px; color: var(--neon-orange);
-            font-size: 22px; font-weight: bold; text-shadow: 0 0 5px rgba(255, 159, 67, 0.5);
+        /* Depth Monitor */
+        .depth-box {
+            border: 1px solid #ff8c00;
+            padding: 10px;
+            margin-bottom: 15px;
+            position: relative;
+            height: 40px;
         }
 
-        /* کنٹرول بٹنز */
-        .control-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .btn {
-            background: rgba(0, 229, 255, 0.05); border: 1px solid var(--neon-cyan);
-            color: var(--neon-cyan); padding: 15px 5px; cursor: pointer; border-radius: 8px;
-            font-weight: bold; font-size: 11px; transition: 0.3s;
+        #depth-line {
+            width: 100%;
+            height: 2px;
+            background: #ff8c00;
+            position: absolute;
+            top: 50%;
+            left: 0;
+            box-shadow: 0 0 10px #ff8c00;
+            transition: 0.3s;
         }
-        .btn:active { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
-        
-        .status-bar { font-size: 10px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 15px; }
+
+        /* Controls */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid #00f2ff;
+            color: #00f2ff;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: 0.3s;
+        }
+
+        button:active { background: #00f2ff; color: #000; }
+
+        /* Chat & Voice Section */
+        .comm-panel {
+            border-top: 1px solid #00f2ff;
+            padding-top: 10px;
+        }
+
+        #chat-display {
+            height: 60px;
+            background: rgba(0, 242, 255, 0.05);
+            overflow-y: auto;
+            margin-bottom: 5px;
+            font-size: 10px;
+            text-align: left;
+            padding: 5px;
+        }
+
+        .input-group { display: flex; gap: 5px; }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: 1px solid #ff8c00;
+            color: #fff;
+            padding: 5px;
+            font-size: 10px;
+        }
+
+        #mic-btn {
+            width: 100%;
+            margin-top: 8px;
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .mic-active { border-color: #00ff00 !important; color: #00ff00 !important; box-shadow: 0 0 10px #00ff00; }
+
+        .footer { font-size: 8px; margin-top: 10px; opacity: 0.6; }
     </style>
 </head>
 <body>
 
-<div class="main-frame">
-    <span class="monitor-label">● Live System Feed [Encrypted]</span>
-    <div class="camera-window">
-        <div class="live-indicator">● LIVE [ROBOT_EYE_01]</div>
-        <video id="videoFeed" autoplay playsinline></video>
+<div class="dashboard">
+    <h3>● LIVE SYSTEM FEED [ENCRYPTED]</h3>
+    
+    <div id="video-container" onclick="startCamera()">
+        <span class="live-tag">● LIVE [ROBOT_EYE_01]</span>
+        <video id="webcam" autoplay playsinline></video>
     </div>
 
-    <span class="monitor-label">● Depth Monitor (Meters)</span>
-    <div class="depth-container">
-        <div id="dLine" class="depth-line"></div>
-        <div id="dVal" class="depth-value">30m</div>
+    <div class="depth-box">
+        <div id="depth-line"></div>
+        <span style="position:absolute; right:10px; top:10px; color:#ff8c00;">30m</span>
     </div>
 
-    <div class="control-grid">
-        <button class="btn" onclick="act('RISE')">RISE ▲</button>
-        <button class="btn" onclick="act('FWD')">FWD ↑</button>
-        <button class="btn" onclick="act('STOP')">STOP ■</button>
-        <button class="btn" onclick="act('LEFT')">LEFT ◀</button>
-        <button class="btn" onclick="act('DIVE')">DIVE ▼</button>
-        <button class="btn" onclick="act('RIGHT')">RIGHT ▶</button>
+    <div class="controls">
+        <button onclick="moveDepth(-5)">RISE ▲</button>
+        <button>FWD ↑</button>
+        <button>STOP ■</button>
+        <button>LEFT ◀</button>
+        <button onclick="moveDepth(5)">DIVE ▼</button>
+        <button>RIGHT ▶</button>
     </div>
 
-    <div class="status-bar">SYSTEM_READY | SIGNAL: STABLE | BY: MY</div>
+    <div class="comm-panel">
+        <div id="chat-display">SYSTEM: Ready for input...</div>
+        <div class="input-group">
+            <input type="text" id="chat-input" placeholder="Type message...">
+            <button onclick="sendMessage()">SEND</button>
+        </div>
+        <button id="mic-btn" onclick="toggleMic()">MIC: OFF</button>
+    </div>
+
+    <div class="footer">SIGNAL: STABLE | BY: MY</div>
 </div>
 
 <script>
-    // کیمرہ ایکٹیویٹ کرنے کا فنکشن
-    async function startSystem() {
-        const video = document.getElementById('videoFeed');
+    let depth = 50;
+    const webcam = document.getElementById('webcam');
+    const micBtn = document.getElementById('mic-btn');
+
+    // 1. Camera Logic
+    async function startCamera() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment" }, // موبائل کا پچھلا کیمرہ
-                audio: false 
-            });
-            video.srcObject = stream;
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            webcam.srcObject = stream;
         } catch (err) {
-            console.error("Camera Error:", err);
-            // اگر لوکل فائل ہے تو الرٹ دکھائے گا
-            if(location.protocol !== 'https:') {
-                alert("کیمرہ صرف HTTPS پر کام کرے گا۔ براہ کرم GitHub پر اپ لوڈ کریں!");
-            }
+            alert("Camera Error: " + err);
         }
     }
 
-    // پیج لوڈ ہوتے ہی سسٹم شروع کریں
-    window.onload = startSystem;
-
-    let depth = 30;
-    function act(type) {
-        if(type === 'DIVE' && depth < 100) depth += 10;
-        if(type === 'RISE' && depth > 0) depth -= 10;
-        
-        // گرافکس اپڈیٹ
-        document.getElementById('dLine').style.top = depth + "%";
-        document.getElementById('dVal').innerText = depth + "m";
-        
-        // ہیپٹک فیڈ بیک (اگر موبائل سپورٹ کرے)
+    // 2. Depth Logic
+    function moveDepth(val) {
+        depth += val;
+        document.getElementById('depth-line').style.top = depth + '%';
         if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    // 3. Chat Logic
+    function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const display = document.getElementById('chat-display');
+        if(input.value) {
+            display.innerHTML += `<div>> ${input.value}</div>`;
+            display.scrollTop = display.scrollHeight;
+            input.value = '';
+        }
+    }
+
+    // 4. Voice Logic
+    let isMicOn = false;
+    async function toggleMic() {
+        if (!isMicOn) {
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                micBtn.innerText = "MIC: ACTIVE";
+                micBtn.classList.add('mic-active');
+                isMicOn = true;
+            } catch (err) {
+                alert("Mic Access Denied");
+            }
+        } else {
+            micBtn.innerText = "MIC: OFF";
+            micBtn.classList.remove('mic-active');
+            isMicOn = false;
+        }
     }
 </script>
 
