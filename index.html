@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shark Dashboard - AI Night Vision Edition</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+    <style>
+        body { background: #000; color: #00f2ff; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 10px; }
+        .dashboard { border: 2px solid #00f2ff; border-radius: 20px; padding: 15px; box-shadow: 0 0 20px #00f2ff; max-width: 400px; margin: auto; background: rgba(0, 10, 20, 0.9); }
+        h3 { font-size: 14px; text-shadow: 0 0 8px #00f2ff; margin-top: 0; }
+        
+        /* کیمرہ کنٹینر */
+        .video-container { position: relative; width: 100%; height: 240px; border: 1px solid #00f2ff; border-radius: 10px; overflow: hidden; background: #050505; margin-bottom: 10px; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* نائٹ ویژن گرین فلٹر کا اسٹائل */
+        .night-vision { filter: matrix(0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0) contrast(1.5) brightness(1.2); }
+        .night-vision::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 6px 100%; z-index: 2; pointer-events: none; }
+        
+        .ai-status-box { background: rgba(0, 255, 0, 0.1); border: 1px solid #00ff00; border-radius: 8px; padding: 8px; margin: 10px 0; font-size: 13px; color: #00ff00; text-shadow: 0 0 5px #00ff00; }
+        .id-display { background: rgba(255, 140, 0, 0.1); padding: 8px; border: 1px dashed #ff8c00; color: #ff8c00; font-weight: bold; margin-bottom: 10px; font-size: 12px; }
+        input { background: transparent; border: 1px solid #00f2ff; color: white; padding: 6px; width: 65%; margin-bottom: 8px; outline: none; font-size: 11px; }
+        button { background: transparent; border: 1px solid #00f2ff; color: #00f2ff; padding: 6px 15px; cursor: pointer; transition: 0.3s; font-size: 11px; }
+        button:hover { background: #00f2ff; color: #000; box-shadow: 0 0 10px #00f2ff; }
+        #chat-window { height: 70px; overflow-y: auto; background: #000; border: 1px solid #111; margin: 10px 0; padding: 8px; text-align: left; font-size: 11px; }
+        .active-btn { border-color: #00ff00 !important; color: #00ff00 !important; box-shadow: 0 0 10px #00ff00; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h3>● SHARK SYSTEM: COMMAND CENTER</h3>
+    
+    <div class="video-container" id="cam-wrapper">
+        <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+
+    <div class="ai-status-box" id="ai-output">
+        جائزہ: 🔍 چہرہ تلاش کیا جا رہا ہے...
+    </div>
+
+    <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+        <button onclick="toggleNightVision()" style="flex: 1; border-color: #00ff00; color: #00ff00;">NIGHT VISION</button>
+        <button id="mic-toggle" onclick="toggleMic()" style="flex: 1; border-color:#ff4444; color:#ff4444;">MIC: OFF</button>
+    </div>
+
+    <div class="id-display">
+        سسٹم نام: <span id="display-id">Connecting...</span>
+    </div>
+
+    <input type="text" id="target-id" placeholder="دوست کا سسٹم نام لکھیں...">
+    <button onclick="startCall()">CONNECT</button>
+
+    <div id="chat-window">SYSTEM: Secure connection ready...</div>
+    
+    <div style="display:flex; gap:5px;">
+        <input type="text" id="msg-text" placeholder="Type encrypted message..." style="width: 100%;">
+        <button onclick="sendMsg()">SEND</button>
+    </div>
+    
+    <div style="font-size: 9px; margin-top: 10px; opacity: 0.5;">ENCRYPTION: AES-256 | BY: MY</div>
+</div>
+
+<script>
+    // 1. صارف کا نام سیٹ کرنا
+    const myName = prompt("اپنا کمانڈ نام درج کریں (مثلاً: yousuf123):") || "user" + Math.floor(Math.random()*1000);
+    const peer = new Peer(myName); 
+    let localStream;
+    let currentConn;
+    let faceapi;
+
+    peer.on('open', (id) => { document.getElementById('display-id').innerText = id; });
+
+    // 2. کیمرہ اور AI ماڈل لوڈ کرنا
+    async function initSystem() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const videoEl = document.getElementById('localVideo');
+            videoEl.srcObject = localStream;
+            
+            // ml5.js کے ذریعے Face API لوڈ کرنا
+            const faceOptions = { withLandmarks: true, withExpressions: true, withDescriptors: false };
+            faceapi = ml5.faceApi(videoEl, faceOptions, modelLoaded);
+        } catch (e) { alert("Camera Access Error: " + e); }
+    }
+
+    function modelLoaded() {
+        document.getElementById('ai-output').innerText = "جائزہ: 🤖 AI ماڈل آن ہو چکا ہے!";
+        detectFace();
+    }
+
+    // چہرے اور مسکراہٹ کو بار بار اسکین کرنا
+    function detectFace() {
+        faceapi.detect((err, results) => {
+            if (err) { console.log(err); return; }
+            
+            const outputBox = document.getElementById('ai-output');
+            if (results && results.length > 0) {
+                let expressions = results[0].expressions;
+                // اگر مسکراہٹ کی ویلیو 0.5 سے زیادہ ہو
+                if (expressions.happy > 0.5) {
+                    outputBox.innerText = "جائزہ: 😊 مسکراہٹ محسوس ہوئی - بہت خوب!";
+                } else {
+                    outputBox.innerText = "جائزہ: 😐 چہرہ نارمل پوزیشن میں ہے";
+                }
+            } else {
+                outputBox.innerText = "جائزہ: 👤 سامنے کوئی چہرہ نہیں ہے";
+            }
+            setTimeout(detectFace, 500); // ہر آدھے سیکنڈ بعد اسکین کرے گا
+        });
+    }
+
+    initSystem();
+
+    // 3. نائٹ ویژن آن/آف فیچر
+    function toggleNightVision() {
+        document.getElementById('cam-wrapper').classList.toggle('night-vision');
+    }
+
+    // 4. WebRTC کال اور چیٹ لاجک
+    peer.on('call', (call) => {
+        call.answer(localStream);
+    });
+
+    peer.on('connection', (conn) => {
+        currentConn = conn;
+        listenForMsgs();
+    });
+
+    function startCall() {
+        const destId = document.getElementById('target-id').value;
+        peer.call(destId, localStream);
+        currentConn = peer.connect(destId);
+        listenForMsgs();
+    }
+
+    function listenForMsgs() {
+        currentConn.on('data', (data) => {
+            document.getElementById('chat-window').innerHTML += `<div style="color:#ff8c00;">> Incoming: ${data}</div>`;
+        });
+    }
+
+    function sendMsg() {
+        const txt = document.getElementById('msg-text').value;
+        if(currentConn && txt) {
+            currentConn.send(txt);
+            document.getElementById('chat-window').innerHTML += `<div>> You: ${txt}</div>`;
+            document.getElementById('msg-text').value = '';
+        }
+    }
+
+    function toggleMic() {
+        const audio = localStream.getAudioTracks()[0];
+        audio.enabled = !audio.enabled;
+        const btn = document.getElementById('mic-toggle');
+        btn.innerText = audio.enabled ? "MIC: ACTIVE" : "MIC: OFF";
+        btn.classList.toggle('active-btn');
+    }
+</script>
+
+</body>
+</html>
